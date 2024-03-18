@@ -137,24 +137,6 @@ SELECT TableNumber INTO TableNumberOfInterest FROM Bookings
 WHERE DATE(BookingDate) = CustomerBookingDate AND TableNumber = CustomerTableNumber;
 
 SELECT 
-    IF TableNumberOfInterest = CustomerTableNumber
-    THEN CONCAT('Table ', CustomerTableNumber, ' is already booked')
-    ELSE CONCAT('Table ', CustomerTableNumber, ' is available for booking')
-    END IF AS 'Booking status';
-END //
-
-DELIMITER ;
-
-DELIMITER //
-
-CREATE PROCEDURE CheckBooking (IN CustomerBookingDate VARCHAR(45), IN CustomerTableNumber INT)
-BEGIN 
-DECLARE TableNumberOfInterest INT;
-
-SELECT TableNumber INTO TableNumberOfInterest FROM Bookings
-WHERE DATE(BookingDate) = CustomerBookingDate AND TableNumber = CustomerTableNumber;
-
-SELECT 
     IF(
         CustomerTableNumber = TableNumberOfInterest, 
         CONCAT('Table ', CustomerTableNumber, ' is already booked'), 
@@ -167,4 +149,50 @@ DELIMITER ;
 CALL CheckBooking('2022-11-12', 3);
 
 
+-- Task 3
+-- Little Lemon need to verify a booking, and decline any reservations for tables that are already booked 
+-- under another name. 
+-- Since integrity is not optional, Little Lemon need to ensure that every booking attempt 
+-- includes these verification and decline steps. However, implementing these steps requires a stored procedure 
+-- and a transaction. 
+-- To implement these steps, you need to create a new procedure called AddValidBooking. 
+-- This procedure must use a transaction statement to perform a rollback if a customer reserves a table 
+-- that’s already booked under another name.  
+-- Use the following guidelines to complete this task:
+-- The procedure should include two input parameters in the form of booking date and table number.
+-- It also requires at least one variable and should begin with a START TRANSACTION statement.
+-- Your INSERT statement must add a new booking record using the input parameter's values.
+-- Use an IF ELSE statement to check if a table is already booked on the given date. 
+-- If the table is already booked, then rollback the transaction. 
+-- If the table is available, then commit the transaction. 
+DELIMITER //
 
+CREATE PROCEDURE AddValidBooking(IN CustomerBookingDate VARCHAR(45), IN CustomerTableNumber INT)
+
+BEGIN
+START TRANSACTION;
+
+SET @TableNumberOfInterest = NULL;
+
+SELECT TableNumber INTO @TableNumberOfInterest FROM Bookings
+WHERE DATE(BookingDate) = CustomerBookingDate AND TableNumber = CustomerTableNumber;
+
+IF @TableNumberOfInterest = CustomerTableNumber 
+    THEN SELECT CONCAT('Table ', CustomerTableNumber, ' is already booked - booking cancelled') AS 'Booking status';
+    ROLLBACK;
+ELSE 
+    INSERT INTO Bookings 
+        (BookingDate, ReservationDate, TableNumber, NumberOfGuests, CustomerID, StaffID)
+        VALUES (CustomerBookingDate, CustomerBookingDate, CustomerTableNumber, 2, 1, 1);
+        SELECT CONCAT('Table ', CustomerTableNumber, ' successfully booked.') AS 'Booking status';
+        COMMIT;
+END IF;
+END //
+DELIMITER ;
+
+-- This table is already booked
+CALL AddValidBooking('2022-11-12', 3);
+
+-- This table is available
+CALL AddValidBooking('2023-01-12', 3);
+ 
