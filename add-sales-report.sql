@@ -90,3 +90,81 @@ DELIMITER ;
 
 CALL CancelOrder(5);
 
+
+-- Little Lemon wants to populate the Bookings table of their database with some records of data. 
+-- Your first task is to replicate the list of records in the following table by adding them 
+-- to the Little Lemon booking table.
+-- First, insert data into the Customers and Staff tables which will be referenced in the Bookings table
+INSERT INTO Customers(CustomerID, FirstName, LastName, PhoneNumber)
+VALUES
+(1, 'John', 'Doe', '12345'),
+(2, 'Mary', 'Jane', '13678'),
+(3, 'Leslie', 'Cooper', '32560');
+
+INSERT INTO Staff(StaffID, FirstName, LastName, `Role`, Salary)
+VALUE (1, 'Titi', 'Tomomewo', 'Manager', '100000');
+
+-- Then, insert data into the Bookings table
+
+INSERT INTO Bookings (BookingID, BookingDate, ReservationDate, TableNumber, NumberOfGuests, CustomerID, StaffID)
+VALUES
+(1, '2022-10-10 12:00:00', '2022-10-10 18:00:00', 5, 2, 1, 1),
+(2, '2022-11-12 15:00:00', '2022-11-12 19:00:00', 3, 2, 3, 1),
+(3, '2022-10-11 10:00:00', '2022-10-11 20:00:00', 2, 2, 2, 1),
+(4, '2022-10-13 00:00:00', '2022-10-13 18:00:00', 2, 2, 1, 1)
+
+-- Confirm that the data was correctly inserted
+SELECT 
+    BookingID,
+    DATE(BookingDate) AS BookingDate,
+    TableNumber,
+    CustomerID
+FROM Bookings;
+
+
+-- Little Lemon need you to create a stored procedure called CheckBooking to check whether a table 
+-- in the restaurant is already booked. Creating this procedure helps to minimize the effort involved 
+-- in repeatedly coding the same SQL statements.
+-- The procedure should have two input parameters in the form of booking date and table number. 
+-- You can also create a variable in the procedure to check the status of each table.
+DELIMITER //
+
+CREATE PROCEDURE CheckBooking (IN CustomerBookingDate VARCHAR(45), IN CustomerTableNumber INT)
+BEGIN 
+DECLARE TableNumberOfInterest INT;
+
+SELECT TableNumber INTO TableNumberOfInterest FROM Bookings
+WHERE DATE(BookingDate) = CustomerBookingDate AND TableNumber = CustomerTableNumber;
+
+SELECT 
+    IF TableNumberOfInterest = CustomerTableNumber
+    THEN CONCAT('Table ', CustomerTableNumber, ' is already booked')
+    ELSE CONCAT('Table ', CustomerTableNumber, ' is available for booking')
+    END IF AS 'Booking status';
+END //
+
+DELIMITER ;
+
+DELIMITER //
+
+CREATE PROCEDURE CheckBooking (IN CustomerBookingDate VARCHAR(45), IN CustomerTableNumber INT)
+BEGIN 
+DECLARE TableNumberOfInterest INT;
+
+SELECT TableNumber INTO TableNumberOfInterest FROM Bookings
+WHERE DATE(BookingDate) = CustomerBookingDate AND TableNumber = CustomerTableNumber;
+
+SELECT 
+    IF(
+        CustomerTableNumber = TableNumberOfInterest, 
+        CONCAT('Table ', CustomerTableNumber, ' is already booked'), 
+        CONCAT('Table ', CustomerTableNumber, ' is available for booking')
+    ) AS 'Booking status';
+END //
+
+DELIMITER ;
+
+CALL CheckBooking('2022-11-12', 3);
+
+
+
