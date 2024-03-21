@@ -127,7 +127,7 @@ FROM Bookings;
 -- When it was time to submit the project in week 4, they asked for a ManageBooking() stored procedure,
 -- I cannot tell for sure if they meant CheckBooking() or AddValidBooking().
 -- I'm going to assume they meant CheckBooking() and so, the stored procedure originally named
--- CheckingBooking() has been renamed ManageBooking()
+-- CheckBooking() has been renamed ManageBooking()
 --------------------------------------------------------------------------------------------------------
 
 
