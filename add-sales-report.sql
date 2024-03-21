@@ -196,3 +196,60 @@ CALL AddValidBooking('2022-11-12', 3);
 -- This table is available
 CALL AddValidBooking('2023-01-12', 3);
  
+
+-- You need to create a new procedure called AddBooking to add a new table booking record.
+-- The procedure should include four input parameters in the form of the following bookings parameters:
+-- booking id, 
+-- customer id, 
+-- booking date,
+-- and table number
+DELIMITER // 
+
+CREATE PROCEDURE AddBooking(IN CustomerBookingID INT, IN CustomerID INT, IN CustomerBookingDate DATE, IN CustomerTableNumber INT)
+BEGIN
+INSERT INTO Bookings (BookingID, BookingDate, ReservationDate, TableNumber, NumberOfGuests, CustomerID, StaffID)
+        VALUES (CustomerBookingID, CustomerBookingDate, CustomerBookingDate, CustomerTableNumber, 2, CustomerID, 1);
+
+SELECT 'New Booking Added' AS Confirmation;
+END //
+
+DELIMITER ;
+
+-- Add a booking
+CALL AddBooking(9, 3, '2022-12-30', 4);
+
+
+-- Little Lemon need you to create a new procedure called UpdateBooking 
+-- that they can use to update existing bookings in the booking table.
+-- The procedure should have two input parameters in the form of booking id and booking date. 
+-- You must also include an UPDATE statement inside the procedure.
+DELIMITER //
+
+CREATE PROCEDURE UpdateBooking (IN CustomerBookingID INT, IN CustomerBookingDate DATE)
+BEGIN
+UPDATE Bookings SET ReservationDate = CustomerBookingDate WHERE BookingID = CustomerBookingID;
+SELECT CONCAT('Booking ', CustomerBookingID, ' updated') AS 'Confirmation';
+END //
+
+DELIMITER ;
+
+-- Update a booking
+CALL UpdateBooking(9, '2022-12-17');
+
+
+-- Little Lemon need you to create a new procedure called CancelBooking that they can use 
+-- to cancel or remove a booking.
+-- The procedure should have one input parameter in the form of booking id. 
+-- You must also write a DELETE statement inside the procedure. 
+DELIMITER //
+
+CREATE PROCEDURE CancelBooking (IN CustomerBookingID INT)
+BEGIN
+DELETE FROM Bookings WHERE BookingID = CustomerBookingID;
+SELECT CONCAT('Booking ', CustomerBookingID, ' cancelled') AS 'Confirmation';
+END //
+
+DELIMITER ;
+
+-- Cancel a booking
+CALL CancelBooking(9);
