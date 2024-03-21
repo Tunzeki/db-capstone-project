@@ -121,6 +121,15 @@ SELECT
     CustomerID
 FROM Bookings;
 
+--------------------------------------------------------------------------------------------------------
+-- NB: The exercise in week 2 asked to create CheckBooking() and AddValidBooking() stored procedures,
+-- but not a ManageBooking() stored procedure. 
+-- When it was time to submit the project in week 4, they asked for a ManageBooking() stored procedure,
+-- I cannot tell for sure if they meant CheckBooking() or AddValidBooking().
+-- I'm going to assume they meant CheckBooking() and so, the stored procedure originally named
+-- CheckingBooking() has been renamed ManageBooking()
+--------------------------------------------------------------------------------------------------------
+
 
 -- Little Lemon need you to create a stored procedure called CheckBooking to check whether a table 
 -- in the restaurant is already booked. Creating this procedure helps to minimize the effort involved 
@@ -129,7 +138,7 @@ FROM Bookings;
 -- You can also create a variable in the procedure to check the status of each table.
 DELIMITER //
 
-CREATE PROCEDURE CheckBooking (IN CustomerBookingDate VARCHAR(45), IN CustomerTableNumber INT)
+CREATE PROCEDURE ManageBooking (IN CustomerBookingDate VARCHAR(45), IN CustomerTableNumber INT)
 BEGIN 
 DECLARE TableNumberOfInterest INT;
 
@@ -146,7 +155,7 @@ END //
 
 DELIMITER ;
 
-CALL CheckBooking('2022-11-12', 3);
+CALL ManageBooking('2022-11-12', 3);
 
 
 -- Task 3
