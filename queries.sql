@@ -31,3 +31,7 @@ CREATE TABLE IF NOT EXISTS base_table (
     Drink VARCHAR(45) NOT NULL,
     Sides VARCHAR(45) NOT NULL
 ) ENGINE=InnoDB;
+
+
+-- Find out the location to keep the CSV file to be imported
+SELECT @@secure_file_priv;
