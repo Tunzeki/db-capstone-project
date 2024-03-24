@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS base_table (
     City VARCHAR(45) NOT NULL,
     Country VARCHAR(45) NOT NULL,
     PostalCode VARCHAR(45) NOT NULL,
+    CountryCode VARCHAR(10) NOT NULL,
     Cost DECIMAL(6,2) NOT NULL,
     Sales DECIMAL(6,2) NOT NULL,
     Quantity INT NOT NULL,
