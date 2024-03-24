@@ -36,3 +36,19 @@ CREATE TABLE IF NOT EXISTS base_table (
 
 -- Find out the location to keep the CSV file to be imported
 SELECT @@secure_file_priv;
+
+
+-- Import the CSV file containing Little Lemon data into base_table
+LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/LittleLemon_data.csv'
+INTO TABLE base_table
+FIELDS TERMINATED BY ','
+ENCLOSED BY '"'
+LINES TERMINATED BY '\n'
+IGNORE 1 ROWS
+(
+    RowNumber, OrderID, @OrderDate, @DeliveryDate, CustomerID, CustomerName, City, Country, 
+    PostalCode, CountryCode, Cost, Sales, Quantity, Discount, DeliveryCost, CourseName, 
+    CuisineName, StarterName, DessertName, Drink, Sides
+)
+SET OrderDate = STR_TO_DATE(@OrderDate, '%m/%d/%Y'), 
+DeliveryDate = STR_TO_DATE(@DeliveryDate, '%m/%d/%Y');
