@@ -2,7 +2,7 @@
 
 ## Introduction
 
-In this scenario, I have been contracted by the owners of Little Lemon, an intercontinental restaurant that makes exquisite meals and does food deliveries, to help migrate their data storage from Microsoft Excel to a relational database management system. The decision was to use MySQL, its being open-source, scalable, widely used, and easy to integrate with their existing frontend application.
+In this scenario, I have been contracted by the owners of Little Lemon, an intercontinental restaurant that makes exquisite meals and does food deliveries, to help migrate their data storage from Microsoft Excel to a relational database management system. The consensus was to use MySQL, it being open-source, scalable, widely used, and easy to integrate with their existing frontend application.
 
 ## Understanding Little Lemon Existing Data
 
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS base_table (
     PostalCode VARCHAR(45) NOT NULL,
     CountryCode VARCHAR(10) NOT NULL,
     Cost DECIMAL(6,2) NOT NULL,
-    Sales DECIMAL(6,2) NOT NULL,
+    Sales DECIMAL(6,3) NOT NULL,
     Quantity INT NOT NULL,
     Discount DECIMAL(6,2) NOT NULL,
     DeliveryCost DECIMAL(6,2) NOT NULL,
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS base_table (
     DessertName VARCHAR(45) NOT NULL,
     Drink VARCHAR(45) NOT NULL,
     Sides VARCHAR(45) NOT NULL
-) ENGINE=InnoDB;
+) ENGINE=InnoDB,CHARSET=utf8mb4;
 ```
 
 While I adopted a Pascal Case naming convention for the tables and columns in the data model, the decision to use Snake Case for this table name was intentional: to differentiate it from tables in the data model at a glance.  Table columns retained the Pascal Case naming convention, and column names are comparable to those in the Excel sheet. Each column has a data type similar to the one mentioned in the description provided above for the columns in the Excel sheet. The column constraints are self descriptive.
@@ -102,8 +102,182 @@ SET OrderDate = STR_TO_DATE(@OrderDate, '%m/%d/%Y'),
 DeliveryDate = STR_TO_DATE(@DeliveryDate, '%m/%d/%Y');
 ```
 
-Remember that the Excel sheet has column headings? Since I do not want to import the column headings, the statement above contained the clause, `IGNORE 1 ROWS`. If you're wondering, the syntax is really `IGNORE 1 ROWS` with `ROWS` in plural: SQL isn't English. The SQL standard requires dates to be in the format `YYYY-MM-DD`, but the csv file has date columns in the format `MM/DD/YYYY`. I could have used Excel to change the date format from `MM/DD/YYYY` to `YYYY-MM-DD`, but I opted to use SQL, because the steps to doing this are easier to reproduce and also to demonstrate the depth of my knowledge of SQL. All I had to do was specify the column names in brackets and use the `SET` syntax to change the value in the date columns from `MM/DD/YYYY` to `YYYY-MM-DD` with the aid of the `STR_TO_DATE()` function.
+Remember that the Excel sheet has column headings? Since I do not want to import the column headings, the statement above contained the clause, `IGNORE 1 ROWS`. If you're wondering, the syntax is really `IGNORE 1 ROWS` with `ROWS` in plural: SQL isn't English. The SQL standard requires dates to be in the format `YYYY-MM-DD`, but the csv file has date columns in the format `MM/DD/YYYY`. I could have used Excel to change the date format from `MM/DD/YYYY` to `YYYY-MM-DD`, but I opted to use SQL, because the steps to doing this are easier to reproduce and also to show you the extent of what is possible with this statement. All I had to do was specify the column names in brackets and use the `SET` syntax to change the value in the date columns from `MM/DD/YYYY` to `YYYY-MM-DD` with the aid of the `STR_TO_DATE()` function.
 
 All 21,000 records were successfully loaded into the base table. Notably, it is also possible to use MySQL Workbench to import data from a csv file into a table with the added advantage that you do not have to create the table beforehand. Notwithstanding, in my experience, running the `LOAD DATA` statement from the command client is by far faster than using the Workbench. I once attempted to load a file with 1 million records using the Workbench. The process took several hours, I went for lunch and came back and it never completed. I had to terminate the operation. But it only took some seconds when I executed the `LOAD DATA` statement in the command client.
 
 ![output of running load data statement](load_data_infile.png)
+
+### Data Transformation and Loading
+
+Now that the base table had been created and populated with data from the Excel sheet, it was time to fill up the tables in the Little Lemon newly created schema with data starting from the `Customers` table. I selected unique customers' data from relevant columns in the base table and inserted same into the `Customers` table:
+
+```sql
+INSERT INTO Customers (CustomerID, FirstName, LastName)
+SELECT DISTINCT CustomerID, SUBSTRING_INDEX(CustomerName, ' ', 1), SUBSTRING_INDEX(CustomerName, ' ', -1)
+FROM base_table;
+```
+
+The output of running the above query showed that there were 1,000 unique customers.
+
+![output of running insert into customers select...](insert_into_select_customers.png)
+
+You may choose the inspect a few rows from the `Customers` table by running:
+
+```sql
+SELECT CustomerID, FirstName, LastName FROM Customers LIMIT 10;
+```
+
+Notice how I listed the column names I was interested in retrieving in the query above as opposed to writing a `SELECT *` statement? This is an optimization technique that improves the performance of queries. 
+
+![select column list vs select *](select_column_list_vs_select_all.png)
+
+> [!TIP]
+> Avoid using `SELECT *` statements in production.
+
+I ran similar `INSERT INTO SELECT` statements to insert data into `Countries`, `Cities`, `Courses`, `Cuisines`, `Starters`, `Desserts`, `Drinks`, and `Sides` - tables with no foreign key constraints. You can review the [SQL code here.](queries.sql#L61)
+
+The `Addresses` table has foreign key constraints on it and so, a simple `INSERT INTO SELECT` statement would not be adequate to populate this table with existing data. What I did was add multiple `INNER JOIN` clauses to retrieve data from relevant tables based on common column values and insert the data into the `Addresses` table.
+
+```sql
+INSERT INTO Addresses (PostalCode, CityID, CountryID, CustomerID)
+SELECT DISTINCT
+    ba.PostalCode, 
+    ci.CityID, 
+    co.CountryID, 
+    cu.CustomerID
+FROM base_table ba
+INNER JOIN Cities ci ON ba.City = ci.City
+INNER JOIN Countries co ON ba.Country = co.Country
+INNER JOIN Customers cu ON ba.CustomerName = CONCAT(cu.FirstName, ' ', cu.LastName);  
+```
+
+A similar operation was done to insert data into the `Orders` table:
+
+```sql
+INSERT INTO Orders 
+(OrderID, OrderDate, CostPrice, SellingPrice, Quantity, Discount, CustomerID, CourseID, CuisineID, StarterID, DessertID, DrinkID, SideID)
+SELECT DISTINCT
+    ba.OrderID,
+    ba.OrderDate,
+    ba.Cost,
+    ba.Sales,
+    ba.Quantity,
+    ba.Discount,
+    cu.CustomerID,
+    co.CourseID,
+    cui.CuisineID,
+    st.StarterID,
+    de.DessertID,
+    dr.DrinkID,
+    si.SideID
+FROM base_table ba
+INNER JOIN Customers cu ON ba.CustomerName = CONCAT(cu.FirstName, ' ', cu.LastName)
+INNER JOIN Courses co ON ba.CourseName = co.CourseName
+INNER JOIN Cuisines cui ON ba.CuisineName = cui.CuisineName
+INNER JOIN Starters st ON ba.StarterName = st.StarterName
+INNER JOIN Desserts de ON ba.DessertName = de.DessertName
+INNER JOIN Drinks dr ON ba.Drink = dr.DrinkName
+INNER JOIN Sides si ON ba.Sides = si.SideName;
+```
+
+However, running the query above will fail with a duplicate key error.
+
+![image showing duplicate key error on trying to insert data into the Orders table](duplicate_key_error_on_orders_table.png)
+
+Let's inspect the base table for the `OrderID` in the error message to gain more insights:
+
+```sql
+SELECT * FROM base_table
+WHERE OrderID = '65-311-3002';
+```
+
+Wait a minute! Did I not just tell you to avoid using `SELECT *` statements? Why then did I just use it? What I actually said was that you should not use it in production environment. It is okay to use it during development for a testing or debugging purpose such as this. 
+
+I reached this conclusion when I inspected the output: A customer may have multiple entries in the `Orders` table with the same `OrderID` if the orders are made at the same time but they are sent to different delivery addresses. To use an example,  a customer may buy 10 cheesecakes at the same time but send 2 each to 5 different locations (`PostalCode`) for delivery. The orders will have the same `OrderID`. Thus, it is imperative to use a composite primary key for the `Orders` table that will consist of the `OrderID` and the `PostalCode`. In order to do this, I'd have to drop the existing primary key (after dropping the foreign key constraints on tables referencing this column) and then add a new one.
+
+```sql
+-- Drop foreign key constraints on tables referencing Orders.OrderID
+ALTER TABLE Deliveries DROP FOREIGN KEY deliveries_order_id_fk;
+
+ALTER TABLE Payments DROP FOREIGN KEY payments_order_id_fk;
+
+-- See the arrangement of columns in the Orders table
+SHOW COLUMNS FROM Orders;
+
+-- Add a new column after OrderID column
+ALTER TABLE Orders ADD COLUMN PostalCode VARCHAR(45) NOT NULL AFTER OrderID;
+
+-- Confirm that the new column was placed after the OrderID column
+SHOW COLUMNS FROM Orders;
+
+-- Drop existing primary key
+ALTER TABLE Orders DROP PRIMARY KEY; 
+
+-- Add a composite primary key
+ALTER TABLE Orders ADD PRIMARY KEY (OrderID, PostalCode);
+
+-- Recreate the foreign key constraints on relevant tables
+ALTER TABLE Deliveries ADD CONSTRAINT deliveries_order_id_fk FOREIGN KEY (OrderID) REFERENCES Orders(OrderID) ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE Payments ADD CONSTRAINT payments_order_id_fk FOREIGN KEY (OrderID) REFERENCES Orders(OrderID) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- Rerun the modified query to insert data into the Orders table
+INSERT INTO Orders 
+(OrderID, PostalCode, OrderDate, CostPrice, SellingPrice, Quantity, Discount, CustomerID, CourseID, CuisineID, StarterID, DessertID, DrinkID, SideID)
+SELECT DISTINCT
+    ba.OrderID,
+    ba.PostalCode,
+    ba.OrderDate,
+    ba.Cost,
+    ROUND(ba.Sales, 2),
+    ba.Quantity,
+    ba.Discount,
+    cu.CustomerID,
+    co.CourseID,
+    cui.CuisineID,
+    st.StarterID,
+    de.DessertID,
+    dr.DrinkID,
+    si.SideID
+FROM base_table ba
+INNER JOIN Customers cu ON ba.CustomerName = CONCAT(cu.FirstName, ' ', cu.LastName)
+INNER JOIN Courses co ON ba.CourseName = co.CourseName
+INNER JOIN Cuisines cui ON ba.CuisineName = cui.CuisineName
+INNER JOIN Starters st ON ba.StarterName = st.StarterName
+INNER JOIN Desserts de ON ba.DessertName = de.DessertName
+INNER JOIN Drinks dr ON ba.Drink = dr.DrinkName
+INNER JOIN Sides si ON ba.Sides = si.SideName;
+```
+
+![image showing that data was successfully inserted into the Orders table](no_duplicate_key_error_on_orders_table.png)
+
+Without further ado, let's also insert data into the `Deliveries` and `Payments` tables:
+
+```sql
+-- Insert data into Deliveries table
+INSERT INTO Deliveries (DeliveryDate, DeliveryFee, AddressID, OrderID)
+SELECT
+    ba.DeliveryDate,
+    ba.DeliveryCost,
+    ad.AddressID,
+    `or`.OrderID
+FROM base_table ba
+INNER JOIN Addresses ad ON ba.PostalCode = ad.PostalCode AND ba.CustomerID = ad.CustomerID
+INNER JOIN Orders `or` ON ba.PostalCode = `or`.PostalCode AND ba.OrderID = `or`.OrderID;
+
+-- Insert data into Payments table
+INSERT INTO Payments (SellingPriceAfterDiscount, DeliveryFee, AmountPaid, OrderID, DeliveryID)
+SELECT
+    (ROUND(ba.Sales, 2) - ba.Discount),
+    ba.DeliveryCost,
+    (ROUND(ba.Sales, 2) - ba.Discount + ba.DeliveryCost),
+    `or`.OrderID,
+    de.DeliveryID
+FROM base_table ba
+INNER JOIN Orders `or` ON ba.PostalCode = `or`.PostalCode AND ba.OrderID = `or`.OrderID
+INNER JOIN Addresses ad ON ba.PostalCode = ad.PostalCode AND ba.CustomerID = ad.CustomerID
+INNER JOIN Deliveries de ON `or`.OrderID = de.OrderID AND ad.AddressID = de.AddressID;
+```
+
+And so, in many steps, I have extracted data from the data source, transformed it into suitable data types, and loaded it into many tables in a MySQL database.
