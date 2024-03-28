@@ -232,7 +232,7 @@ ENGINE = InnoDB;
 -- Table `littlelemon`.`Payments`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `littlelemon`.`Payments` (
-  `PaymentID` VARCHAR(45) NOT NULL,
+  `PaymentID` INT NOT NULL AUTO_INCREMENT,
   `SellingPriceAfterDiscount` DECIMAL(6,2) NOT NULL,
   `DeliveryFee` DECIMAL(6,2) NOT NULL,
   `AmountPaid` DECIMAL(6,2) NOT NULL,
