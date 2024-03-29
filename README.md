@@ -122,7 +122,7 @@ The output of running the above query showed that there were 1,000 unique custom
 
 ![output of running insert into customers select...](insert_into_select_customers.png)
 
-You may choose the inspect a few rows from the `Customers` table by running:
+You may choose to inspect a few rows from the `Customers` table by running:
 
 ```sql
 SELECT CustomerID, FirstName, LastName FROM Customers LIMIT 10;
